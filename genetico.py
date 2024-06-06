@@ -36,7 +36,7 @@ GREEN = (0, 255, 0)
 
 # Movimientos posibles N, NE, E, SE, S, SO, O, NO, Quedarse quieto
 moves = [
-    (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (0, 0)
+    (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (0, 0) 
 ]
 
 class Individual:
@@ -84,6 +84,17 @@ def draw_grid(screen):
 def draw_population(screen, population):
     for individual in population:
         individual.draw(screen)
+
+
+p = [10,20,40,60,120,300,15,60]
+#Funcion para normalizar a 1 los numeros de un array
+def normalizar(array):
+    sumatoria = sum(array)
+    for i in range(0,len(array)):
+        array[i] = (array[i]/sumatoria)
+    print(array)
+    return array
+normalizar(p)
 
 # Bucle principal de Pygame
 running = True
