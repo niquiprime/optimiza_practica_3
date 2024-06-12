@@ -12,11 +12,11 @@ class DNA:
         self.verbose = verbose
 
 
-    def create_individual(self, min = 0, max = 9):
-        return [np.random.randint(min, max) for _ in range(len(self.target))]
+    def crear_individuo(self, min = 20, max = 100):
+        return normalizar([np.random.randint(min, max) for _ in range(len(self.target))])
 
     def create_population(self):
-        return [self.create_individual() for _ in range(self.n_individuals)]
+        return [self.crear_individuo() for _ in range(self.n_individuals)]
 
     def fitness(self, individual):
         fitness = 0
@@ -45,7 +45,9 @@ class DNA:
 
             population[i][:point] = father[0][:point]
             population[i][point:] = father[1][point:]
-        
+            
+            population[i] = normalizar(population[i])
+           
         return population
     
     def mutation(self, population):
@@ -59,6 +61,7 @@ class DNA:
                     new_value = np.random.randint(0, 9)
                 
                 population[i][point] = new_value
+            population[i] = normalizar(population[i])
             return population
     
     def run_geneticalgo(self):
@@ -73,17 +76,22 @@ class DNA:
                 print()
 
             selected = self.selection(population)
-            population = self.reproduction(population, selected)
+            #population = self.reproduction(population, selected)
             population = self.mutation(population)
-
+def normalizar(array):
+    sumatoria = sum(array)
+    for i in range(0,len(array)):
+        array[i] = (array[i]/sumatoria)
+    print(array)
+    return array
 def main():
-    target = [1,0,0,1,1,0,0,1]
+    target = [1,2,3,4,5,6,7,8,9]
     model = DNA(
         target = target,
         mutation_rate = 0.5,
-        n_individuals = 500,
-        n_selection = 10,
-        n_generations = 50,
+        n_individuals = 1,
+        n_selection = 2,
+        n_generations = 10,
         verbose=True)
     model.run_geneticalgo()
 
