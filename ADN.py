@@ -10,6 +10,7 @@ class DNA:
         self.n_selection = n_selection
         self.n_generations = n_generations
         self.verbose = verbose
+        self.pasos = np.random.randint(1, 9)
 
 
     def crear_individuo(self, min = 20, max = 100):
@@ -19,18 +20,20 @@ class DNA:
         return [self.crear_individuo() for _ in range(self.n_individuals)]
 
     def fitness(self, individual):
-        fitness = 0
-
-        for i in range(len(individual)):
-            if individual[i] == self.target[i]:
-                fitness += 1
+        fitness = self.pasos
+        #print("Pasossssssssss",fitness)
+        #for i in range(len(individual)):
+        #    if individual[i] == self.target[i]:
+        #        fitness += 1
         
         return fitness
     
     def selection(self, population):
 
+        scores = [(self.fitness(i), i) for i in population ]
         scores = [(self.fitness(i), i) for i in population]
         scores = [i[1] for i in sorted(scores)]
+        #print("Numero random",scores)
 
         return scores[len(scores)-self.n_selection:]
     
@@ -72,26 +75,28 @@ class DNA:
             if self.verbose:
                 print('___________')
                 print('Generacion: ', i)
-                print('Poblacion', population)
+                #print('Poblacion', population, self.pasos)
+                print('Poblacion\n', population, "\nPasos: ", self.pasos)
+                #print(max(population[0]),sum(population[0]))
                 print()
 
             selected = self.selection(population)
-            #population = self.reproduction(population, selected)
+            population = self.reproduction(population, selected)
             population = self.mutation(population)
 def normalizar(array):
     sumatoria = sum(array)
     for i in range(0,len(array)):
         array[i] = (array[i]/sumatoria)
-    print(array)
+    #print(array)
     return array
 def main():
     target = [1,2,3,4,5,6,7,8,9]
     model = DNA(
         target = target,
         mutation_rate = 0.5,
-        n_individuals = 1,
-        n_selection = 2,
-        n_generations = 10,
+        n_individuals =10,
+        n_selection = 5,
+        n_generations = 100,
         verbose=True)
     model.run_geneticalgo()
 
