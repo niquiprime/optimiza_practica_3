@@ -23,10 +23,7 @@ class DNA:
         pasos = self.pasos
         minimo_pasos = 0
         fitness = minimo_pasos - pasos
-        #print("Pasossssssssss",fitness)
-        #for i in range(len(individual)):
-        #    if individual[i] == self.target[i]:
-        #        fitness += 1
+        
         
         return fitness
     
@@ -96,8 +93,8 @@ def main():
     model = DNA(
         target = target,
         mutation_rate = 0.5,
-        n_individuals =10,
-        n_selection = 5,
+        n_individuals =2,
+        n_selection = 2,
         n_generations = 100,
         verbose=True)
     model.run_geneticalgo()
