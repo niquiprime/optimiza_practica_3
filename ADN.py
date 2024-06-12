@@ -20,7 +20,9 @@ class DNA:
         return [self.crear_individuo() for _ in range(self.n_individuals)]
 
     def fitness(self, individual):
-        fitness = self.pasos
+        pasos = self.pasos
+        minimo_pasos = 0
+        fitness = minimo_pasos - pasos
         #print("Pasossssssssss",fitness)
         #for i in range(len(individual)):
         #    if individual[i] == self.target[i]:
@@ -58,10 +60,10 @@ class DNA:
         for i in range(len(population)):
             if random.random() <= self.mutation_rate:
                 point = np.random.randint(len(self.target))
-                new_value = np.random.randint(0, 9)
+                new_value = np.random.randint(20, 100)
 
                 while new_value == population[i][point]:
-                    new_value = np.random.randint(0, 9)
+                    new_value = np.random.randint(20, 100)
                 
                 population[i][point] = new_value
             population[i] = normalizar(population[i])
@@ -76,7 +78,7 @@ class DNA:
                 print('___________')
                 print('Generacion: ', i)
                 #print('Poblacion', population, self.pasos)
-                print('Poblacion\n', population, "\nPasos: ", self.pasos)
+                print('Poblacion\n', population, "\nPasos: ", self.fitness(population[0]), self.pasos)
                 #print(max(population[0]),sum(population[0]))
                 print()
 
@@ -90,7 +92,7 @@ def normalizar(array):
     #print(array)
     return array
 def main():
-    target = [1,2,3,4,5,6,7,8,9]
+    target = [1,2,3,4,5,6,7,8]
     model = DNA(
         target = target,
         mutation_rate = 0.5,
