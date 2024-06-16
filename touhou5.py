@@ -74,11 +74,14 @@ class Individual:
                 self.steps_to_goal = self.move_count
                 occupied_positions.add((self.x, self.y))  # Marcar la posición como ocupada
 
-#def normalizar(array):
-#    sumatoria = sum(array)
-#    if sumatoria == 0:
-#        return [1 / len(array)] * len(array)
-#    return [x / sumatoria for x in array]
+    def reset(self):
+        """Reiniciar la posición y estado del individuo."""
+        self.x = random.randint(0, grid_height-1)
+        self.y = random.randint(0, 1)
+        self.move_count = 0
+        self.reached_goal = False
+        self.steps_to_goal = None
+
 def normalizar(array):
     sumatoria = sum(array)
     for i in range(len(array)):
@@ -88,6 +91,7 @@ def normalizar(array):
     diff = 1 - sum(array)
     array[array.index(max_value)] += diff
     return array
+
 class DNA:
     def __init__(self, num_genes, mutation_rate, n_individuals, n_selection, n_generations, fitness_func, verbose=True):
         self.mutation_rate = mutation_rate
@@ -150,16 +154,40 @@ class DNA:
     def run_geneticalgo(self):
         """Ejecuta el algoritmo genético durante el número de generaciones especificado."""
         population = self.create_population()
+        
         for generation in range(self.n_generations):
             if self.verbose:
                 print(f'Generación {generation}')
                 for ind in population:
-                    print(f'Genes: | Sumatoria: {sum(ind.genes)} | Special Attribute: {ind.special_attribute}, pasos: {ind.move_count}')
+                    print(f'Genes: {ind.genes} | Sumatoria: {sum(ind.genes)} | Special Attribute: {ind.special_attribute}, pasos: {ind.move_count}')
+            
+            # Limpiar la grilla y reiniciar individuos para la nueva generación
+            for individual in population:
+                individual.reset()
+            
+            # Simulación de la generación actual
+            move_iterations = 0  # Contador de iteraciones de movimiento
+            occupied_positions = set()  # Conjunto de posiciones ocupadas en la última columna
+
+            while move_iterations < max_moves:
+                screen.fill(WHITE)
+                draw_grid(screen)
+                draw_population(screen, population)
+                pygame.display.flip()
+
+                # Mover la población
+                for individual in population:
+                    individual.move(occupied_positions)
+                move_iterations += 1  # Incrementar el contador de iteraciones de movimiento
+
+                pygame.time.wait(100)
+
             # Guardar los genes de la población actual en la historia
             self.history.append([ind.genes for ind in population])
             selected = self.selection(population)
             population = self.reproduction(population, selected)
             population = self.mutation(population)
+        
         return population
 
 def draw_grid(screen):
@@ -176,58 +204,31 @@ def draw_population(screen, population):
     for individual in population:
         individual.draw(screen)
 
-def main():
-    # Definir la función de aptitud personalizada
-    def custom_fitness(individual):
-        if individual.reached_goal:
-            return grid_width/(individual.steps_to_goal)
-        else:
-            return 0
+def fitness(individual):
+    if individual.reached_goal:
+        return 1 / (individual.steps_to_goal + 1)  # Recompensar llegar a la meta en menos movimientos
+    else:
+        return -1 * (grid_width - 1 - individual.y)  # Penalizar la distancia desde la última columna
 
+def main():
     model = DNA(
         num_genes=num_genes,
         mutation_rate=mutation_rate,
         n_individuals=n_individuals,
         n_selection=n_selection,
         n_generations=n_generations,
-        fitness_func=custom_fitness,
+        fitness_func=fitness,
         verbose=True
     )
+
     population = model.run_geneticalgo()
     
-    # Bucle principal de Pygame
-    running = True
-    move_iterations = 0  # Contador de iteraciones de movimiento
-    occupied_positions = set()  # Conjunto de posiciones ocupadas en la última columna
-
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        
-        screen.fill(WHITE)
-        draw_grid(screen)
-        draw_population(screen, population)
-        pygame.display.flip()
-
-        if move_iterations < max_moves:
-            # Mover la población
-            for individual in population:
-                individual.move(occupied_positions)
-            move_iterations += 1  # Incrementar el contador de iteraciones de movimiento
-        
-        pygame.time.wait(100)
+    print("Población final:")
+    for individual in population:
+        print(f"Genes: {individual.genes}, Special Attribute: {individual.special_attribute}")
 
     pygame.quit()
+    sys.exit()
 
-    # Imprimir semilla
-    print(f"Semilla: {seed}")
-    # Mostrar los resultados
-    for idx, individual in enumerate(population):
-        if individual.reached_goal:
-            print(f"Individuo {idx} llegó a la meta en {individual.steps_to_goal} pasos, aptitud: {custom_fitness(individual)},generacion {n_generations}")
-        else:
-            print(f"Individuo {idx} no llegó a la meta")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
