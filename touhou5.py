@@ -40,7 +40,7 @@ BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
-
+# 2 4 7
 # Movimientos posibles: NO, N, NE, O, E, SO, S, SE
 moves = [
     (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)
@@ -155,11 +155,11 @@ class DNA:
         """Ejecuta el algoritmo genético durante el número de generaciones especificado."""
         population = self.create_population()
         
-        for generation in range(self.n_generations):
+        for generation in range(self.n_generations+1):
             if self.verbose:
                 print(f'Generación {generation}')
                 for ind in population:
-                    print(f'Genes: {ind.genes} | Sumatoria: {sum(ind.genes)} | Special Attribute: {ind.special_attribute}, pasos: {ind.move_count}')
+                    print(f'Genes: {ind.genes[0],ind.genes[1],ind.genes[2]} | Sumatoria: {sum(ind.genes)} | Special Attribute: {ind.special_attribute}')
             
             # Limpiar la grilla y reiniciar individuos para la nueva generación
             for individual in population:
@@ -180,7 +180,7 @@ class DNA:
                     individual.move(occupied_positions)
                 move_iterations += 1  # Incrementar el contador de iteraciones de movimiento
 
-                pygame.time.wait(100)
+                pygame.time.wait(10)
 
             # Guardar los genes de la población actual en la historia
             self.history.append([ind.genes for ind in population])
@@ -206,9 +206,9 @@ def draw_population(screen, population):
 
 def fitness(individual):
     if individual.reached_goal:
-        return 1 / (individual.steps_to_goal + 1)  # Recompensar llegar a la meta en menos movimientos
+        return grid_width / (individual.steps_to_goal)  # Recompensar llegar a la meta en menos movimientos
     else:
-        return -1 * (grid_width - 1 - individual.y)  # Penalizar la distancia desde la última columna
+        return 0# Penalizar la distancia desde la última columna
 
 def main():
     model = DNA(
