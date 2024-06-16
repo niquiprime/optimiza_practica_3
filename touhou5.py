@@ -206,7 +206,7 @@ def draw_population(screen, population):
 
 def fitness(individual):
     if individual.reached_goal:
-        return grid_width / (individual.steps_to_goal)  # Recompensar llegar a la meta en menos movimientos
+        return (grid_width) / (individual.steps_to_goal +1)  # Recompensar llegar a la meta en menos movimientos
     else:
         return 0# Penalizar la distancia desde la última columna
 
