@@ -4,18 +4,19 @@ import pygame
 import sys
 from datetime import datetime
 
+# Parámetros de la Simulación
+grid_width = 20  # Ancho de la grilla
+grid_height = 20  # Alto de la grilla
+cell_size = 60
+max_moves = 100
+
 # Parámetros del Algoritmo Genético
 num_genes = 8  # Número de genes, uno por cada dirección de movimiento
 mutation_rate = 0.5
-n_individuals = 10  # Número de individuos
+n_individuals = grid_height + 5  # Número de individuos
 n_selection = 2  # Número de individuos seleccionados para reproducción
 n_generations = 20  # Número de generaciones
 
-# Parámetros de la Simulación
-grid_width = 10  # Ancho de la grilla
-grid_height = 8  # Alto de la grilla
-cell_size = 60
-max_moves = 100
 
 # Parámetro opcional para la semilla
 use_seed = False  # Cambia a True si deseas fijar una semilla
