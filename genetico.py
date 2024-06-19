@@ -54,6 +54,7 @@ class Individual:
         self.genes = [random.random() for _ in range(num_genes)]
         self.genes = normalizar(self.genes)
         self.special_attribute = False
+        self.vivo = True
         self.move_count = 0  # Contador de movimientos
         self.reached_goal = False  # Indicador de si alcanzó la meta
         self.steps_to_goal = None  # Pasos para llegar a la meta
@@ -96,6 +97,7 @@ class Individual:
             occupied_positions.remove((other_individual.x, other_individual.y))
         population.remove(other_individual)
         other_individual.reached_goal = False
+        other_individual.vivo = False
         print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")
         
         
@@ -217,16 +219,15 @@ class DNA:
             population = self.reproduction(population, selected)
             population = self.mutation(population)
             
-            
-             # Imprimir los individuos que llegaron a la meta en esta generación
-            if reached_goal_individuals:
-                print(f"Individuos que alcanzaron la meta en la generación {generation}: {len(reached_goal_individuals)} individuos")
-                for ind in reached_goal_individuals:
+            vivos_reached_goal = [ind for ind in reached_goal_individuals if ind.vivo]
+
+            # Imprimir los individuos vivos que llegaron a la meta en esta generación
+            if vivos_reached_goal:
+                print(f"Individuos vivos que alcanzaron la meta en la generación {generation}: {len(vivos_reached_goal)} individuos")
+                for ind in vivos_reached_goal:
                     print(f"ID: {ind.id} | Pasos para llegar a la meta: {ind.steps_to_goal} | ¿Asesino?: {'Si' if ind.special_attribute else 'No'}")
             else:
                 print(f"Ningún individuo alcanzó la meta en la generación {generation}")
-
-            
 
         return population
 
