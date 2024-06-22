@@ -3,22 +3,23 @@ import random
 import pygame
 import sys
 from datetime import datetime
-
-# Parámetros del Algoritmo Genético
-num_genes = 8  # Número de genes, uno por cada dirección de movimiento
-mutation_rate = 0.5
-n_individuals = 10  # Número de individuos
-n_selection = 2  # Número de individuos seleccionados para reproducción
-n_generations = 20  # Número de generaciones
+import matplotlib.pyplot as plt
 
 # Parámetros de la Simulación
-grid_width = 10  # Ancho de la grilla
-grid_height = 8  # Alto de la grilla
+grid_width = 20  # Ancho de la grilla
+grid_height = 10  # Alto de la grilla
 cell_size = 60
 max_moves = 100
 
+# Parámetros del Algoritmo Genético
+num_genes = 8  # Número de genes, uno por cada dirección de movimiento
+mutation_rate = 0.05
+n_individuals = grid_height + 5  # Número de individuos
+n_padres = 2  # Número de individuos seleccionados para reproducción
+n_generations = 2000  # Número de generaciones
+
 # Parámetro opcional para la semilla
-use_seed = True  # Cambia a True si deseas fijar una semilla
+use_seed = False  # Cambia a True si deseas fijar una semilla
 seed = 1718226075 if use_seed else int(datetime.now().timestamp())
 
 # Fijar la semilla para reproducibilidad (opcional)
@@ -54,6 +55,7 @@ class Individual:
         self.genes = [random.random() for _ in range(num_genes)]
         self.genes = normalizar(self.genes)
         self.special_attribute = False
+        self.vivo = True
         self.move_count = 0  # Contador de movimientos
         self.reached_goal = False  # Indicador de si alcanzó la meta
         self.steps_to_goal = None  # Pasos para llegar a la meta
@@ -96,18 +98,18 @@ class Individual:
             occupied_positions.remove((other_individual.x, other_individual.y))
         population.remove(other_individual)
         other_individual.reached_goal = False
-        print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")
+        other_individual.vivo = False
+        #print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")
         
         
     def reset(self):
         """Reiniciar la posición y estado del individuo."""
-        self.x = random.randint(0, grid_height - 1)
-        self.y = random.randint(0, 1)
+        self.x = np.random.randint(0, grid_height)
+        self.y = np.random.randint(0, 2)
         self.move_count = 0
         self.reached_goal = False
         self.steps_to_goal = None
     
-
 
 def normalizar(array):
     sumatoria = sum(array)
@@ -120,19 +122,20 @@ def normalizar(array):
     return array
 
 class DNA:
-    def __init__(self, num_genes, mutation_rate, n_individuals, n_selection, n_generations, fitness_func, verbose=True):
+    def __init__(self, num_genes, mutation_rate, n_individuals, n_padres, n_generations, fitness_func, verbose=True):
         self.mutation_rate = mutation_rate
         self.n_individuals = n_individuals
-        self.n_selection = n_selection
+        self.n_padres = n_padres
         self.n_generations = n_generations
         self.verbose = verbose
         self.fitness_func = fitness_func
         self.num_genes = num_genes
         self.history = []  # Variable para almacenar los genes de cada generación
+        self.fitness_history = []  # Variable para almacenar el fitness de cada generación
 
     def create_individual(self):
         """Crea un individuo con probabilidades de movimiento aleatorias y atributo especial en False."""
-        x, y = random.randint(0, grid_height - 1), random.randint(0, 1)
+        x, y = np.random.randint(0, grid_height), np.random.randint(0, 2)
         return Individual(x, y, self.num_genes)
     
     def create_population(self):
@@ -140,15 +143,45 @@ class DNA:
         return [self.create_individual() for _ in range(self.n_individuals)]
 
     def selection(self, population):
-        """Selecciona los mejores individuos en función de su aptitud."""
-        scores = [(self.fitness_func(individual), individual) for individual in population]
-        scores.sort(key=lambda x: x[0], reverse=True)
-        selected = [individual for _, individual in scores[:self.n_selection]]
+        # Filtrar individuos que están vivos y han alcanzado la meta
+        valid_individuals = [ind for ind in population if ind.vivo and ind.reached_goal]
+        
+        if not valid_individuals:
+            print("No hay individuos válidos para seleccionar")
+            return []  # No hay individuos válidos para seleccionar
+
+        if len(valid_individuals) < self.n_padres:
+            print("No hay suficientes individuos válidos para seleccionar el número deseado de padres")
+            return valid_individuals  # Retornar todos los individuos válidos disponibles
+
+        fitness_values = [self.fitness_func(ind) for ind in valid_individuals]
+        
+        if max(fitness_values) == 0:
+            probabilities = [1 / len(valid_individuals) for _ in valid_individuals]
+        else:
+            # Normalizar los valores de fitness para obtener probabilidades
+            total_fitness = sum(fitness_values)
+            probabilities = [fitness / total_fitness for fitness in fitness_values]
+
+        # Asegurar que las probabilidades sumen 1
+        total_prob = sum(probabilities)
+        if total_prob > 0:
+            probabilities = [p / total_prob for p in probabilities]
+        
+        selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilities, replace=False)
+        selected = [valid_individuals[i] for i in selected_indices]
+        
+        for i in range(len(selected)):
+            print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilities[i]}')
         return selected
 
     def reproduction(self, population, selected):
         """Realiza la reproducción entre individuos seleccionados."""
         new_population = []
+        if not selected:
+            print("No hay individuos seleccionados para reproducción, creando nueva población")
+            return self.create_population()  # Crear nueva población si no hay individuos seleccionados
+
         for _ in range(self.n_individuals):
             if len(selected) > 1:
                 parent1, parent2 = random.sample(selected, 2)
@@ -162,9 +195,8 @@ class DNA:
                 child = Individual(parent.x, parent.y, self.num_genes)
                 child.genes = normalizar(parent.genes)
                 new_population.append(child)
-            else:
-                new_population = self.create_population()
-                break
+
+        print("Número de individuos", len(new_population) == self.n_individuals)
         return new_population
 
     def mutation(self, population):
@@ -185,8 +217,8 @@ class DNA:
         for generation in range(self.n_generations + 1):
             if self.verbose:
                 print(f'Generación {generation}:  {len(population)} individuos')
-                for ind in population:
-                    print(f'Asesino: {ind.special_attribute} | ID: {ind.id}')
+                #for ind in population:
+                #    print(f'ID: {ind.id} | ¿Asesino?: {'Si' if ind.special_attribute else 'No'}')
             # Limpiar la grilla y reiniciar individuos para la nueva generación
             for individual in population:
                 individual.reset()
@@ -197,10 +229,12 @@ class DNA:
             reached_goal_individuals = []  # Individuos que alcanzaron la meta en esta generación
 
             while move_iterations < max_moves:
-                screen.fill(WHITE)
-                draw_grid(screen)
-                draw_population(screen, population)
-                pygame.display.flip()
+                if generation % 100 == 0:
+                    # Actualizar la pantalla solo en múltiplos de 100
+                    draw_grid(screen)
+                    draw_population(screen, population)
+                    pygame.time.wait(50)
+                    pygame.display.update()
 
                 # Mover la población
                 for individual in population:
@@ -208,25 +242,30 @@ class DNA:
                     if individual.reached_goal and individual not in reached_goal_individuals:
                         reached_goal_individuals.append(individual)
                 move_iterations += 1  # Incrementar el contador de iteraciones de movimiento
+                #mostrar solo generacion 100 y 200
+                pygame.time.wait(0)
 
-                pygame.time.wait(100)
+            # Calcular y almacenar el fitness promedio de la generación solo para los individuos que alcanzaron la meta
+            fitness_promedio = max([self.fitness_func(ind) for ind in population if ind.reached_goal and ind.vivo], default=0)
+            self.fitness_history.append(fitness_promedio)
+            vivos_reached_goal = [ind for ind in reached_goal_individuals if ind.vivo]
 
             # Guardar los genes de la población actual en la historia
             self.history.append([ind.genes for ind in population])
-            selected = self.selection(population)
+            if  len(vivos_reached_goal) == 0:
+                selected = []
+            else:
+                selected = self.selection(population)
             population = self.reproduction(population, selected)
             population = self.mutation(population)
             
-            
-             # Imprimir los individuos que llegaron a la meta en esta generación
-            if reached_goal_individuals:
-                print(f"Individuos que alcanzaron la meta en la generación {generation}: {len(reached_goal_individuals)} individuos")
-                for ind in reached_goal_individuals:
-                    print(f"ID: {ind.id} | Pasos para llegar a la meta: {ind.steps_to_goal} | ¿Asesino?: {'Si' if ind.special_attribute else 'No'}")
+            # Imprimir los individuos vivos que llegaron a la meta en esta generación
+            if vivos_reached_goal:
+                print(f"Individuos vivos que alcanzaron la meta en la generación {generation}: {len(vivos_reached_goal)} individuos")
+                for ind in vivos_reached_goal:
+                    print(f"ID: {ind.id} | Pasos para llegar a la meta: {ind.steps_to_goal} |Fitness:{self.fitness_func(ind)} | ¿Asesino?: {'Si' if ind.special_attribute else 'No'}")
             else:
                 print(f"Ningún individuo alcanzó la meta en la generación {generation}")
-
-            
 
         return population
 
@@ -245,8 +284,11 @@ def draw_population(screen, population):
         individual.draw(screen)
 
 def fitness(individual):
-    if individual.reached_goal:
-        return (grid_width) / (individual.steps_to_goal + 1)  # Recompensar llegar a la meta en menos movimientos
+    if individual.reached_goal and individual.vivo:
+        fitness = (grid_width) / (individual.steps_to_goal)
+        if fitness >=1:
+            fitness = 1
+        return fitness  # Recompensar llegar a la meta en menos movimientos
     else:
         return 0  # Penalizar la distancia desde la última columna
 
@@ -255,17 +297,22 @@ def main():
         num_genes=num_genes,
         mutation_rate=mutation_rate,
         n_individuals=n_individuals,
-        n_selection=n_selection,
+        n_padres=n_padres,
         n_generations=n_generations,
         fitness_func=fitness,
         verbose=True
     )
 
     population = model.run_geneticalgo()
-
-    print("Población final:")
-    for individual in population:
-        print(f"ID: {individual.id} | ¿Asesino?: {'Si' if individual.special_attribute else 'No'}")
+    # Graficar el fitness promedio por generación
+    plt.plot(model.fitness_history)
+    plt.xlabel('Generación')
+    plt.ylabel('Fitness Promedio')
+    plt.title('Evolución del Fitness Promedio')
+    plt.show()
+    #print("Población final:")
+    #for individual in population:
+    #    print(f"ID: {individual.id} | ¿Asesino?: {'Si' if individual.special_attribute else 'No'}")
 
     pygame.quit()
     sys.exit()
