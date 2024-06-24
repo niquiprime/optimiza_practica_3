@@ -157,23 +157,48 @@ class DNA:
         fitness_values = [self.fitness_func(ind) for ind in valid_individuals]
         
         if max(fitness_values) == 0:
-            probabilities = [1 / len(valid_individuals) for _ in valid_individuals]
+            print("Todos los individuos tienen fitness 0, seleccionando aleatoriamente")
+            probabilidades = [1 / len(valid_individuals) for _ in valid_individuals]
         else:
+        #    print("Numero de individuos validos", len(valid_individuals))
             # Normalizar los valores de fitness para obtener probabilidades
-            total_fitness = sum(fitness_values)
-            probabilities = [fitness / total_fitness for fitness in fitness_values]
+            #sortear los fitness
+        #    fitness_values.sort(reverse=True)
+        #    total_fitness = sum(fitness_values)
+        #    probabilities = [fitness / total_fitness for fitness in fitness_values]
 
         # Asegurar que las probabilidades sumen 1
-        total_prob = sum(probabilities)
-        if total_prob > 0:
-            probabilities = [p / total_prob for p in probabilities]
+        #total_prob = sum(probabilities)
+        #if total_prob != 1:
+        #    probabilities = [p / total_prob for p in probabilities]
         
-        selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilities, replace=False)
-        selected = [valid_individuals[i] for i in selected_indices]
+        #selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilities, replace=False)
+        #selected = [valid_individuals[i] for i in selected_indices]
         
-        for i in range(len(selected)):
-            print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilities[i]}')
-        return selected
+        #for i in range(len(selected)):
+        #    print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilities[i]}')
+####
+            #print("Numero de individuos validos", len(valid_individuals))
+            fitness_values.sort(reverse=True)
+            #Ordenar individuos por su fitness deben ir ordenados del mas apto al menos apto
+            valid_individuals.sort(key=lambda x: self.fitness_func(x), reverse=True)
+            #Obtener probabilidades (1-p)**n para n individuos validos
+            if max(fitness_values) >= 1:
+                factor_p = 0.9
+            else:
+                factor_p = max(fitness_values)
+            probabilidades = []
+            for i in  range(len(valid_individuals)):
+                probabilidades.append((1-factor_p)**i+1) #empezar en n =1
+            normalizar(probabilidades)
+            #print("Normalizada",sum(probabilidades))
+            selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilidades, replace=False)
+            selected = [valid_individuals[i] for i in selected_indices]
+            #Imprimir los individuos seleccionados y los indices
+            for i in range(len(selected)):
+                print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilidades[selected_indices[i]]}')
+            print(f"factor p de reproduccion de este episodio: {factor_p}")
+            return selected
 
     def reproduction(self, population, selected):
         """Realiza la reproducción entre individuos seleccionados."""
@@ -195,8 +220,6 @@ class DNA:
                 child = Individual(parent.x, parent.y, self.num_genes)
                 child.genes = normalizar(parent.genes)
                 new_population.append(child)
-
-        print("Número de individuos", len(new_population) == self.n_individuals)
         return new_population
 
     def mutation(self, population):
