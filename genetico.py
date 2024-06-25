@@ -16,13 +16,13 @@ max_moves = 100
 
 # Parámetros del Algoritmo Genético
 num_genes = 8  # Número de genes, uno por cada dirección de movimiento
-mutation_rate = 0.05
+mutation_rate = 0.1
 n_individuals = grid_height + 5  # Número de individuos
 n_padres = 2  # Número de individuos seleccionados para reproducción
 n_generations = 1000  # Número de generaciones
 
 # Parámetro opcional para la semilla
-use_seed = False  # Cambia a True si deseas fijar una semilla
+use_seed = True  # Cambia a True si deseas fijar una semilla
 seed = 1718226075 if use_seed else int(datetime.now().timestamp())
 
 # Fijar la semilla para reproducibilidad (opcional)
@@ -36,7 +36,7 @@ pygame.init()
 screen_width = grid_width * cell_size
 screen_height = grid_height * cell_size
 screen = pygame.display.set_mode((screen_width + 200, screen_height))
-pygame.display.set_caption("Algoritmo Genético - Población Inicial")
+pygame.display.set_caption("Algoritmo Genético")
 
 
 # Cargar imágenes
@@ -140,8 +140,7 @@ class Individual:
             occupied_positions.remove((other_individual.x, other_individual.y))
         population.remove(other_individual)
         other_individual.reached_goal = False
-        other_individual.vivo = False
-        #print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")        
+        other_individual.vivo = False     
         
     def reset(self):
         """Reiniciar la posición y estado del individuo."""
@@ -203,7 +202,6 @@ class DNA:
             print("Todos los individuos tienen fitness 0, seleccionando aleatoriamente")
             probabilidades = [1 / len(valid_individuals) for _ in valid_individuals]
         else:        
-            #print("Numero de individuos validos", len(valid_individuals))
             fitness_values.sort(reverse=True)
             #Ordenar individuos por su fitness deben ir ordenados del mas apto al menos apto
             valid_individuals.sort(key=lambda x: self.fitness_func(x), reverse=True)
@@ -216,13 +214,8 @@ class DNA:
             for i in  range(len(valid_individuals)):
                 probabilidades.append((1-factor_p)**i+1) #empezar en n =1
             normalizar(probabilidades)
-            #print("Normalizada",sum(probabilidades))
             selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilidades, replace=False)
             selected = [valid_individuals[i] for i in selected_indices]
-            #Imprimir los individuos seleccionados y los indices
-            for i in range(len(selected)):
-                print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilidades[selected_indices[i]]}')
-            print(f"factor p de reproduccion de este episodio: {factor_p}")
             return selected
 
     def reproduction(self, population, selected):
@@ -265,8 +258,6 @@ class DNA:
         for generation in range(self.n_generations + 1):
             if self.verbose:
                 print(f'Generación {generation}:  {len(population)} individuos')
-                #for ind in population:
-                #    print(f'ID: {ind.id} | ¿Asesino?: {'Si' if ind.special_attribute else 'No'}')
             # Limpiar la grilla y reiniciar individuos para la nueva generación
             for individual in population:
                 individual.reset()
@@ -281,7 +272,7 @@ class DNA:
                     # Actualizar la pantalla solo en múltiplos de 100
                     draw_grid(screen)
                     draw_population(screen, population)
-                    draw_legend(screen)
+                    draw_legend(screen, generation)
                     pygame.time.wait(50)
                     pygame.display.update()
 
@@ -325,6 +316,9 @@ class DNA:
         return population
 
 def draw_grid(screen):
+
+    screen.fill(BLACK)
+
     for x in range(0, screen_width, cell_size):
         for y in range(0, screen_height, cell_size):
             rect = pygame.Rect(x, y, cell_size, cell_size)
@@ -334,7 +328,12 @@ def draw_grid(screen):
                 pygame.draw.rect(screen, WHITE, rect)
             pygame.draw.rect(screen, BLACK, rect, 1)  # Líneas de la grilla
 
-def draw_legend(screen):
+def draw_underline(screen, pos, width):
+    # Función para dibujar subrayado
+    pygame.draw.line(screen, WHITE, pos, (pos[0] + width, pos[1]), 2)
+
+
+def draw_legend(screen, generation):
     font = pygame.font.SysFont('Arial', 20)
     legend_x = screen_width + 20  # Ajuste horizontal para alinear a la derecha
     legend_y = 20  # Posición vertical inicial de la leyenda
@@ -345,6 +344,34 @@ def draw_legend(screen):
         pygame.draw.circle(screen, color, (legend_x + 100, legend_y + 10), 10)  # Ajuste horizontal para el círculo
         legend_y += 30  # Espacio entre líneas de la leyenda
 
+        font = pygame.font.SysFont('Arial', 20)
+
+    # Renderizar y dibujar el texto con subrayado para "Generación actual"
+    generation_text = font.render('Generación actual:', True, WHITE)
+    screen.blit(generation_text, (legend_x, legend_y))
+    draw_underline(screen, (legend_x, legend_y + generation_text.get_height()), generation_text.get_width())
+
+    # Renderizar y dibujar el número de generación
+    generation_number = font.render(f'{generation}', True, WHITE)
+    screen.blit(generation_number, (legend_x, legend_y + generation_text.get_height() + 10))  # Ajuste vertical
+
+    # Renderizar y dibujar el texto con subrayado para "Semilla"
+    seed_text = font.render(f'Semilla:', True, WHITE)
+    screen.blit(seed_text, (legend_x, legend_y + generation_text.get_height() + 40))  # Ajuste vertical
+    draw_underline(screen, (legend_x, legend_y + generation_text.get_height() + seed_text.get_height() + 40), seed_text.get_width())
+
+    # Renderizar y dibujar el número de semilla
+    seed_number = font.render(f'{seed}', True, WHITE)
+    screen.blit(seed_number, (legend_x, legend_y + generation_text.get_height() + seed_text.get_height() + 50))  # Ajuste vertical
+
+    # Agregar imagen de Steve y Creeper, indicando el atributo especial, donde creeper es el asesino
+    steve_text = font.render('Individuo:', True, WHITE)
+    screen.blit(steve_text, (legend_x, legend_y + generation_text.get_height() + seed_text.get_height() + 100))  # Ajuste vertical
+    screen.blit(steve, (legend_x + 100, legend_y + generation_text.get_height() + seed_text.get_height() + 80))  # Ajuste vertical
+
+    creeper_text = font.render('Asesino:', True, WHITE)
+    screen.blit(creeper_text, (legend_x, legend_y + generation_text.get_height() + seed_text.get_height() + 140))  # Ajuste vertical
+    screen.blit(creeper, (legend_x + 100, legend_y + generation_text.get_height() + seed_text.get_height() + 130))  # Ajuste vertical
 
 def draw_population(screen, population):
     for individual in population:
@@ -380,7 +407,6 @@ def main():
     )
     generaciones = np.linspace(0, n_generations, 100)
     model.run_geneticalgo()
-    #print(f'Historial de muertos: {model.historial_asesinados}, maxima cantidad de muertos: {max(model.historial_asesinados)} en la generacion {model.historial_asesinados.index(max(model.historial_asesinados))}')
     # Agrupar los valores en 100 divisiones
     num_divisiones = 100
     vivos_agrupados = agrupar_valores(model.historial_vivos, num_divisiones)
