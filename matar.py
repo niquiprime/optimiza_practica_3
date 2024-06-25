@@ -2,8 +2,11 @@ import numpy as np
 import random
 import pygame
 import sys
+import math
 from datetime import datetime
 import matplotlib.pyplot as plt
+from cargar_img import cargar_imagenes
+
 
 # Parámetros de la Simulación
 grid_width = 20  # Ancho de la grilla
@@ -32,8 +35,17 @@ pygame.init()
 # Tamaño de la pantalla
 screen_width = grid_width * cell_size
 screen_height = grid_height * cell_size
-screen = pygame.display.set_mode((screen_width, screen_height))
+screen = pygame.display.set_mode((screen_width + 200, screen_height))
 pygame.display.set_caption("Algoritmo Genético - Población Inicial")
+
+
+# Cargar imágenes
+creeper, steve = cargar_imagenes()
+
+# redimensionar imagenes a tamaño de celda
+creeper = pygame.transform.scale(creeper, (cell_size // 2, cell_size // 2))
+steve = pygame.transform.scale(steve, (cell_size // 2, cell_size // 2))
+
 
 # Colores
 WHITE = (255, 255, 255)
@@ -41,12 +53,26 @@ BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+MAGENTA = (255, 0, 255)
+CYAN = (0, 255, 255)
+YELLOW = (255, 255, 0)
+ORANGE = (255, 165, 0)
+DARK_GREEN = (0, 100, 0)
 
 # Movimientos posibles: NO, N, NE, O, E, SO, S, SE
 moves = [
     (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)
 ]
 
+# Colores asociados a los movimientos: NO, N, NE, O, E, SO, S, SE
+move_colors = [
+    ORANGE, DARK_GREEN, CYAN, YELLOW, MAGENTA, GREEN, BLUE, RED
+]
+
+# Nombres de los movimientos
+move_names = [
+    "NO", "N", "NE", "O", "E", "SO", "S", "SE"
+]
 class Individual:
     def __init__(self, x, y, num_genes):
         self.id = id(self)
@@ -59,11 +85,25 @@ class Individual:
         self.move_count = 0  # Contador de movimientos
         self.reached_goal = False  # Indicador de si alcanzó la meta
         self.steps_to_goal = None  # Pasos para llegar a la meta
+        self.color = BLUE if not self.special_attribute else RED  # Color inicial
+        self.aura_color = BLUE
+        self.image = steve
 
     def draw(self, screen):
-        color = RED if self.special_attribute else BLUE
-        pygame.draw.circle(screen, color, (self.y * cell_size + cell_size // 2, self.x * cell_size + cell_size // 2), cell_size // 3)
-        
+        # Dibujar el "aura"
+        aura_radius = cell_size // 2
+        center_x = self.y * cell_size + cell_size // 2
+        center_y = self.x * cell_size + cell_size // 2
+        pygame.draw.circle(screen, self.aura_color, (center_x, center_y), aura_radius, 5)
+
+        # Dibujar la imagen del individuo
+        if self.special_attribute:
+            self.image = creeper
+            screen.blit(self.image, (self.y * cell_size + cell_size // 4, self.x * cell_size + cell_size // 4))
+        else:
+            self.image = steve
+            screen.blit(self.image, (self.y * cell_size + cell_size // 4, self.x * cell_size + cell_size // 4))
+            
     def move(self, occupied_positions, population):
         if not self.reached_goal and self.move_count < max_moves and self.y < grid_width - 1:  # Comprobar si el individuo puede moverse
             move = np.random.choice(range(num_genes), p=self.genes)
@@ -85,6 +125,8 @@ class Individual:
                     self.x, self.y = new_x, new_y
                     occupied_positions.add((self.x, self.y))  # Marcar la nueva posición como ocupada
                     self.move_count += 1  # Incrementar el contador de movimientos
+                    self.color = move_colors[move]  # Cambiar el color en función del movimiento
+                    self.aura_color = move_colors[move]  # Cambiar el color del aura en función del movimiento
                 else:
                     self.move_count += 1  # Si no se puede mover, incrementar el contador de movimientos sin cambiar de posición
 
@@ -239,6 +281,7 @@ class DNA:
                     # Actualizar la pantalla solo en múltiplos de 100
                     draw_grid(screen)
                     draw_population(screen, population)
+                    draw_legend(screen)
                     pygame.time.wait(50)
                     pygame.display.update()
 
@@ -290,6 +333,18 @@ def draw_grid(screen):
             else:
                 pygame.draw.rect(screen, WHITE, rect)
             pygame.draw.rect(screen, BLACK, rect, 1)  # Líneas de la grilla
+
+def draw_legend(screen):
+    font = pygame.font.SysFont('Arial', 20)
+    legend_x = screen_width + 20  # Ajuste horizontal para alinear a la derecha
+    legend_y = 20  # Posición vertical inicial de la leyenda
+
+    for move_name, color in zip(move_names, move_colors):
+        text = font.render(f'{move_name}:', True, WHITE)
+        screen.blit(text, (legend_x, legend_y))
+        pygame.draw.circle(screen, color, (legend_x + 100, legend_y + 10), 10)  # Ajuste horizontal para el círculo
+        legend_y += 30  # Espacio entre líneas de la leyenda
+
 
 def draw_population(screen, population):
     for individual in population:
