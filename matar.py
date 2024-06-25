@@ -16,7 +16,7 @@ num_genes = 8  # Número de genes, uno por cada dirección de movimiento
 mutation_rate = 0.05
 n_individuals = grid_height + 5  # Número de individuos
 n_padres = 2  # Número de individuos seleccionados para reproducción
-n_generations = 2000  # Número de generaciones
+n_generations = 1000  # Número de generaciones
 
 # Parámetro opcional para la semilla
 use_seed = False  # Cambia a True si deseas fijar una semilla
@@ -99,8 +99,7 @@ class Individual:
         population.remove(other_individual)
         other_individual.reached_goal = False
         other_individual.vivo = False
-        #print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")
-        
+        #print(f"Individuo {other_individual.id} eliminado por el individuo {self.id}")        
         
     def reset(self):
         """Reiniciar la posición y estado del individuo."""
@@ -108,8 +107,7 @@ class Individual:
         self.y = np.random.randint(0, 2)
         self.move_count = 0
         self.reached_goal = False
-        self.steps_to_goal = None
-    
+        self.steps_to_goal = None    
 
 def normalizar(array):
     sumatoria = sum(array)
@@ -130,8 +128,11 @@ class DNA:
         self.verbose = verbose
         self.fitness_func = fitness_func
         self.num_genes = num_genes
-        self.history = []  # Variable para almacenar los genes de cada generación
-        self.fitness_history = []  # Variable para almacenar el fitness de cada generación
+        self.history = []
+        self.historial_vivos = []
+        self.historial_asesinados = []
+        self.historial_no_llegaron_meta = []
+        self.historial_muertes = []
 
     def create_individual(self):
         """Crea un individuo con probabilidades de movimiento aleatorias y atributo especial en False."""
@@ -159,25 +160,7 @@ class DNA:
         if max(fitness_values) == 0:
             print("Todos los individuos tienen fitness 0, seleccionando aleatoriamente")
             probabilidades = [1 / len(valid_individuals) for _ in valid_individuals]
-        else:
-        #    print("Numero de individuos validos", len(valid_individuals))
-            # Normalizar los valores de fitness para obtener probabilidades
-            #sortear los fitness
-        #    fitness_values.sort(reverse=True)
-        #    total_fitness = sum(fitness_values)
-        #    probabilities = [fitness / total_fitness for fitness in fitness_values]
-
-        # Asegurar que las probabilidades sumen 1
-        #total_prob = sum(probabilities)
-        #if total_prob != 1:
-        #    probabilities = [p / total_prob for p in probabilities]
-        
-        #selected_indices = np.random.choice(len(valid_individuals), size=min(self.n_padres, len(valid_individuals)), p=probabilities, replace=False)
-        #selected = [valid_individuals[i] for i in selected_indices]
-        
-        #for i in range(len(selected)):
-        #    print(f'Individuo {selected[i].id} seleccionado con probabilidad {probabilities[i]}')
-####
+        else:        
             #print("Numero de individuos validos", len(valid_individuals))
             fitness_values.sort(reverse=True)
             #Ordenar individuos por su fitness deben ir ordenados del mas apto al menos apto
@@ -267,10 +250,16 @@ class DNA:
                 move_iterations += 1  # Incrementar el contador de iteraciones de movimiento
                 #mostrar solo generacion 100 y 200
                 pygame.time.wait(0)
+            # Calcular y almacenar proporcion de vivos, asesinados, que no llegaron a la meta y muertos de la generacion
+            prop_vivos = len([ind for ind in population if ind.vivo and ind.reached_goal]) / n_individuals
+            prop_asesinados = (n_individuals - len([ind for ind in population if ind.vivo])) / n_individuals
+            prop_no_llegaron_meta = len([ind for ind in population if not ind.reached_goal]) / n_individuals
+            prop_muertes = prop_asesinados + prop_no_llegaron_meta
+            self.historial_vivos.append(prop_vivos)
+            self.historial_asesinados.append(prop_asesinados)
+            self.historial_no_llegaron_meta.append(prop_no_llegaron_meta)
+            self.historial_muertes.append(prop_muertes)
 
-            # Calcular y almacenar el fitness promedio de la generación solo para los individuos que alcanzaron la meta
-            fitness_promedio = max([self.fitness_func(ind) for ind in population if ind.reached_goal and ind.vivo], default=0)
-            self.fitness_history.append(fitness_promedio)
             vivos_reached_goal = [ind for ind in reached_goal_individuals if ind.vivo]
 
             # Guardar los genes de la población actual en la historia
@@ -314,6 +303,15 @@ def fitness(individual):
         return fitness  # Recompensar llegar a la meta en menos movimientos
     else:
         return 0  # Penalizar la distancia desde la última columna
+# Función para agrupar valores obtiene la media de esa division
+def agrupar_valores(valores, num_divisiones):
+    agrupados = []
+    tam_grupo = len(valores) // num_divisiones
+    for i in range(num_divisiones):
+        grupo = valores[i*tam_grupo:(i+1)*tam_grupo]
+        agrupados.append(np.mean(grupo))
+    return agrupados
+
 
 def main():
     model = DNA(
@@ -325,20 +323,52 @@ def main():
         fitness_func=fitness,
         verbose=True
     )
-
-    population = model.run_geneticalgo()
-    # Graficar el fitness promedio por generación
-    plt.plot(model.fitness_history)
-    plt.xlabel('Generación')
-    plt.ylabel('Fitness Promedio')
-    plt.title('Evolución del Fitness Promedio')
+    generaciones = np.linspace(0, n_generations, 100)
+    model.run_geneticalgo()
+    #print(f'Historial de muertos: {model.historial_asesinados}, maxima cantidad de muertos: {max(model.historial_asesinados)} en la generacion {model.historial_asesinados.index(max(model.historial_asesinados))}')
+    # Agrupar los valores en 100 divisiones
+    num_divisiones = 100
+    vivos_agrupados = agrupar_valores(model.historial_vivos, num_divisiones)
+    muertos_agrupados = agrupar_valores(model.historial_muertes, num_divisiones)
+    asesinatos_agrupados = agrupar_valores(model.historial_asesinados, num_divisiones)
+    meta_agrupados = agrupar_valores(model.historial_no_llegaron_meta, num_divisiones)
+    # Graficar la proporcion de vivos por generacion
+    plt.figure(figsize=(12, 8))
+    plt.plot(generaciones, vivos_agrupados, 'r', label='Proporcion vivos')
+    plt.plot(generaciones, muertos_agrupados, 'y', label='Proporcion muertos')
+    plt.plot(generaciones,asesinatos_agrupados, 'b', label='Proporcion asesinatos')
+    plt.plot(generaciones, meta_agrupados, 'g', label='Proporcion llegaron a la meta')
+    plt.legend()
     plt.show()
-    #print("Población final:")
-    #for individual in population:
-    #    print(f"ID: {individual.id} | ¿Asesino?: {'Si' if individual.special_attribute else 'No'}")
+# Crear figura y ejes
+    fig, axes = plt.subplots(4, 1, figsize=(12, 8), sharex=True)
 
-    pygame.quit()
-    sys.exit()
+    # Plotear cada variable en un subgráfico diferente
+    axes[0].plot(model.historial_vivos, 'r', label='Proporción vivos')
+    axes[0].legend()
+    axes[0].set_ylabel('Proporción')
+
+    axes[1].plot(model.historial_muertes, 'y', label='Proporción muerte')
+    axes[1].legend()
+    axes[1].set_ylabel('Proporción')
+
+    axes[2].plot(model.historial_asesinados, 'b', label='Proporción Asesinatos')
+    axes[2].legend()
+    axes[2].set_ylabel('Proporción')
+
+    axes[3].plot(model.historial_no_llegaron_meta, 'g', label='Proporción que no llegaron a la meta')
+    axes[3].legend()
+    axes[3].set_xlabel('Generación')
+    axes[3].set_ylabel('Proporción')
+
+    # Título de la figura
+    fig.suptitle('Evolución del algoritmo genético')
+
+    # Ajustar el diseño para evitar superposición
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+
+    # Mostrar los gráficos
+    plt.show()
 
 if __name__ == "__main__":
     main()
